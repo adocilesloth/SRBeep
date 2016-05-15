@@ -1,0 +1,49 @@
+/************************************
+A Docile Sloth adocilesloth@gmail.com
+************************************/
+
+Plugin to play a sound when starting/stopping
+streaming/recording.
+
+===WINDOWS===
+Windows is built and working for both 32bit and 64bit
+Has all required .dlls
+
+Drag and drop obs-studio folder into C:\Program Files
+(or wher ever you have obs-studio installed)
+Merge all files down and you should be good to go.
+
+===LINUX===
+I provide binaries for Ubuntu 14.04 LTS 64bit for the PPA
+version of OBS
+Just run
+	>make install
+and it should install for you in the right places.
+
+=For others=, compile and install with
+	>make
+	>make install
+		#NOTE# make install may not work. See below.
+Dependancies:
+obs (duh)
+ffmpeg (you should have this if you have a working obs)
+SDL2 (Simple Directmedia Layer, see https://www.libsdl.org/download-2.0.php)
+
+I've provided a best guess for make install. If your files
+are set up how I think they will be, put SRBeep-bin into
+the obs-studio folder, uncomment the bottom secion and
+comment out the install: and clean: bits that aren't
+commented.
+
+You'll probably have to move the .so.## for ffmpeg into
+/usr/lib/
+but obs-studio should throw a warning for each .so.## (one at a
+time) when it tries to load the module to tell you what they are.
+They should be in the ffmpeg/lib folder (where ever that may be
+for you)
+
+===MAC===
+Uh, sould work. Probably. Don't have a MAC to test with.
+So...
+You can try the "For others" bit of LINUX
+Let me know if you get it to work!
