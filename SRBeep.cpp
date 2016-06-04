@@ -61,12 +61,16 @@ bool obs_module_load(void)
 
 void obs_module_unload(void)
 {
+#ifdef _WIN32
+	return;
+#else
 	closed = true;
 	if(SRBeepThread.joinable())
 	{
 		SRBeepThread.join();
 	}
 	return;
+#endif
 }
 
 const char *obs_module_author(void)
@@ -187,6 +191,10 @@ bool is_recording(void)
 		return true;
 	}
 	else if(obs_output_active(obs_get_output_by_name("adv_file_output")))
+	{
+		return true;
+	}
+	else if(obs_output_active(obs_get_output_by_name("adv_ffmpeg_output")))
 	{
 		return true;
 	}
