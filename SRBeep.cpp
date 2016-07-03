@@ -32,6 +32,7 @@ void fill_audio(void*, Uint8*, int);
 std::thread SRBeepThread;
 std::thread st_stt_Thread, st_sto_Thread, rc_stt_Thread, rc_sto_Thread;
 std::atomic<bool> closed(false);
+std::string clean_path(std::string);
 
 OBS_DECLARE_MODULE()
 
@@ -94,6 +95,7 @@ void main_loop(void)
 	bool record_outputting = false;
 	const char* obs_data_path = obs_get_module_data_path(obs_current_module());
 	std::stringstream audio_path;
+	std::string true_path;
 	while(!closed)
 	{
 		psleep(100);
@@ -107,7 +109,8 @@ void main_loop(void)
 			}
 			audio_path << obs_data_path;
 			audio_path << "/stream_start_sound.mp3";
-			st_stt_Thread = std::thread(play_clip, audio_path.str().c_str());
+			true_path = clean_path(audio_path.str());
+			st_stt_Thread = std::thread(play_clip, true_path.c_str());
 			audio_path.str("");
 			stream_outputting = true;
 		}
@@ -119,7 +122,8 @@ void main_loop(void)
 			}
 			audio_path << obs_data_path;
 			audio_path << "/record_start_sound.mp3";
-			rc_stt_Thread = std::thread(play_clip, audio_path.str().c_str());
+			true_path = clean_path(audio_path.str());
+			rc_stt_Thread = std::thread(play_clip, true_path.c_str());
 			audio_path.str("");
 			record_outputting = true;
 		}
@@ -133,7 +137,8 @@ void main_loop(void)
 			}
 			audio_path << obs_data_path;
 			audio_path << "/stream_stop_sound.mp3";
-			st_sto_Thread = std::thread(play_clip, audio_path.str().c_str());
+			true_path = clean_path(audio_path.str());
+			st_sto_Thread = std::thread(play_clip, true_path.c_str());
 			audio_path.str("");
 			stream_outputting = false;
 		}
@@ -145,7 +150,8 @@ void main_loop(void)
 			}
 			audio_path << obs_data_path;
 			audio_path << "/record_stop_sound.mp3";
-			rc_sto_Thread = std::thread(play_clip, audio_path.str().c_str());
+			true_path = clean_path(audio_path.str());
+			rc_sto_Thread = std::thread(play_clip, true_path.c_str());
 			audio_path.str("");
 			record_outputting = false;
 		}
@@ -369,4 +375,32 @@ void  fill_audio(void *udata, Uint8 *stream, int len)
 	SDL_MixAudio(stream, audio_pos, len, SDL_MIX_MAXVOLUME);
 	audio_pos += len; 
 	audio_len -= len; 
-} 
+}
+
+std::string clean_path(std::string audio_path)
+{
+	std::string cleaned_path;
+	//If relative path then the first 2 chars should be ".."
+	if(audio_path.find("..") != std::string::npos)
+	{
+		std::size_t pos = audio_path.find("..");
+		cleaned_path = audio_path.substr(pos);
+	}
+	//If absolute path, Windows will start with a capital, Linux/Mac will start with "/"
+	else
+	{
+		#ifdef _WIN32
+			while(islower(audio_path[0]) && audio_path.length() > 0)
+			{
+				audio_path = audio_path.substr(1);
+			}
+		#else
+			while(audio_path.substr(0, 1) != "/" && audio_path.length() > 0)
+			{
+				audio_path = audio_path.substr(1);
+			}
+		#endif
+		cleaned_path = audio_path;
+	}
+	return cleaned_path;
+}
