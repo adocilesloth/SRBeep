@@ -28,7 +28,6 @@ struct BeepStruct
 	std::thread SRBeepThread;
 	std::thread st_stt_Thread, st_sto_Thread, rc_stt_Thread, rc_sto_Thread;
 	std::atomic<bool> closed;
-	std::mutex threadEndMutex;
 	std::mutex audioMutex;
 
 	void psleep(unsigned);
@@ -106,13 +105,10 @@ void BeepStruct::main_loop(void)
 	std::string true_path;
 	while(true)
 	{
-		threadEndMutex.lock();
 		if(closed)
 		{
-			threadEndMutex.unlock();
 			break;
 		}
-		threadEndMutex.unlock();
 
 		//stream or recording starts
 		if(!stream_outputting && is_streaming())
@@ -451,9 +447,7 @@ void BeepStruct::Start(void)
 
 void BeepStruct::Stop(void)
 {
-	threadEndMutex.lock();
 	closed = true;
-	threadEndMutex.unlock();
 	if(SRBeepThread.joinable())
 	{
 		SRBeepThread.join();
