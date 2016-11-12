@@ -1,8 +1,9 @@
-/************************************
+/***********************************
 A Docile Sloth adocilesloth@gmail.com
 ************************************/
 
 #include <obs-module.h>
+#include <obs-frontend-api/obs-frontend-api.h>
 #include <thread>
 #include <atomic>
 #include <sstream>
@@ -17,68 +18,51 @@ extern "C"
 	#include "SDL_thread.h"
 };
 
+std::mutex audioMutex;
+std::thread st_stt_Thread, st_sto_Thread, rc_stt_Thread, rc_sto_Thread;
+
 #define	MAX_AUDIO_FRAME_SIZE 192000 // 1 second of 48khz 32bit audio
 static  Uint8  *audio_chunk;
 static  Uint32  audio_len;
 static  Uint8  *audio_pos;
-
-struct BeepStruct
-{
-	//thread stuff
-	std::thread SRBeepThread;
-	std::thread st_stt_Thread, st_sto_Thread, rc_stt_Thread, rc_sto_Thread;
-	std::atomic<bool> closed;
-	std::mutex audioMutex;
-
-	void psleep(unsigned);
-	void main_loop();
-	bool is_streaming();
-	bool is_recording();
-	static void play_clip(const char*);
-	static void fill_audio(void*, Uint8*, int);
-	std::string clean_path(std::string);
-	void Start();
-	void Stop();
-
-	inline ~BeepStruct()
-	{
-		Stop();
-	}
-};
-
-static BeepStruct *BeepObject = nullptr;
 
 OBS_DECLARE_MODULE()
 
 #ifdef _WIN32
 	#include <windows.h>
 
-	void BeepStruct::psleep(unsigned milliseconds)
+	void psleep(unsigned milliseconds)
 	{
 		Sleep(milliseconds);
 	}
 #else
 	#include <unistd.h>
 
-	void BeepStruct::psleep(unsigned milliseconds)
+	void psleep(unsigned milliseconds)
 	{
 		usleep(milliseconds * 1000); // takes microseconds
 	}
 #endif
 
-bool obs_module_load(void)
-{
-	av_register_all();
-	//start thread
-	BeepObject = new BeepStruct;
-	BeepObject->Start();
-	return true;
-}
-
 void obs_module_unload(void)
 {
-	delete BeepObject;
-	BeepObject = nullptr;
+	if(st_stt_Thread.joinable())
+	{
+		st_stt_Thread.join();
+	}
+	if(st_sto_Thread.joinable())
+	{
+		st_sto_Thread.join();
+	}
+	if(rc_stt_Thread.joinable())
+	{
+		rc_stt_Thread.join();
+	}
+	if(rc_sto_Thread.joinable())
+	{
+		rc_sto_Thread.join();
+	}
+	return;
 }
 
 const char *obs_module_author(void)
@@ -96,145 +80,24 @@ const char *obs_module_description(void)
 	return "Adds audio sound when streaming/recording starts/stops.";
 }
 
-void BeepStruct::main_loop(void)
+void fill_audio(void *udata, Uint8 *stream, int len)
 {
-	bool stream_outputting = false;
-	bool record_outputting = false;
-	const char* obs_data_path = obs_get_module_data_path(obs_current_module());
-	std::stringstream audio_path;
-	std::string true_path;
-	while(true)
-	{
-		if(closed)
-		{
-			break;
-		}
+	/*****************************************************************
+	From simplest_ffmpeg_audio_player by leixiaohua1020
+	Download at https://sourceforge.net/projects/simplestffmpegplayer/
+	*****************************************************************/
+	//SDL 2.0
+	SDL_memset(stream, 0, len);
+	if(audio_len == 0)		/*  Only  play  if  we  have  data  left  */
+		return;
+	len = ( (unsigned int)len > audio_len?audio_len:len);	/*  Mix  as  much  data  as  possible  */
 
-		//stream or recording starts
-		if(!stream_outputting && is_streaming())
-		{
-			if(st_stt_Thread.joinable())
-			{
-				st_stt_Thread.join();
-			}
-			audio_path << obs_data_path;
-			audio_path << "/stream_start_sound.mp3";
-			true_path = clean_path(audio_path.str());
-			audioMutex.lock();
-			st_stt_Thread = std::thread(play_clip, true_path.c_str());
-			audioMutex.unlock();
-			audio_path.str("");
-			stream_outputting = true;
-			continue;
-		}
-		if(!record_outputting && is_recording())
-		{
-			if(rc_stt_Thread.joinable())
-			{
-				rc_stt_Thread.join();
-			}
-			audio_path << obs_data_path;
-			audio_path << "/record_start_sound.mp3";
-			true_path = clean_path(audio_path.str());
-			audioMutex.lock();
-			rc_stt_Thread = std::thread(play_clip, true_path.c_str());
-			audioMutex.unlock();
-			audio_path.str("");
-			record_outputting = true;
-			continue;
-		}
-
-		//stream or recording stops
-		if(stream_outputting && !is_streaming())
-		{
-			if(st_sto_Thread.joinable())
-			{
-				st_sto_Thread.join();
-			}
-			audio_path << obs_data_path;
-			audio_path << "/stream_stop_sound.mp3";
-			true_path = clean_path(audio_path.str());
-			audioMutex.lock();
-			st_sto_Thread = std::thread(play_clip, true_path.c_str());
-			audioMutex.unlock();
-			audio_path.str("");
-			stream_outputting = false;
-			continue;
-		}
-		if(record_outputting && !is_recording())
-		{
-			if(rc_sto_Thread.joinable())
-			{
-				rc_sto_Thread.join();
-			}
-			audio_path << obs_data_path;
-			audio_path << "/record_stop_sound.mp3";
-			true_path = clean_path(audio_path.str());
-			audioMutex.lock();
-			rc_sto_Thread = std::thread(play_clip, true_path.c_str());
-			audioMutex.unlock();
-			audio_path.str("");
-			record_outputting = false;
-			continue;
-		}
-
-		psleep(100);
-	}
-	if(st_stt_Thread.joinable())
-	{
-		st_stt_Thread.join();
-	}
-	if(st_sto_Thread.joinable())
-	{
-		st_sto_Thread.join();
-	}
-	if(rc_stt_Thread.joinable())
-	{
-		rc_stt_Thread.join();
-	}
-	if(rc_sto_Thread.joinable())
-	{
-		rc_sto_Thread.join();
-	}
+	SDL_MixAudio(stream, audio_pos, len, SDL_MIX_MAXVOLUME);
+	audio_pos += len;
+	audio_len -= len;
 }
 
-bool BeepStruct::is_streaming(void)
-{
-	if(obs_output_active(obs_get_output_by_name("simple_stream")))
-	{
-		return true;
-	}
-	else if(obs_output_active(obs_get_output_by_name("adv_stream")))
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-
-bool BeepStruct::is_recording(void)
-{
-	if(obs_output_active(obs_get_output_by_name("simple_file_output")))
-	{
-		return true;
-	}
-	else if(obs_output_active(obs_get_output_by_name("adv_file_output")))
-	{
-		return true;
-	}
-	else if(obs_output_active(obs_get_output_by_name("adv_ffmpeg_output")))
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-
-void BeepStruct::play_clip(const char* filepath)
+void play_clip(const char* filepath)
 {
 	//fix problems with audio_len being assigned a value
 	static  Uint32  fixer;
@@ -254,6 +117,7 @@ void BeepStruct::play_clip(const char* filepath)
 		blog(LOG_WARNING, filepath);
 		return;
 	}
+
 	if(avformat_find_stream_info(stream_start, NULL) < 0)
 	{
 		avformat_close_input(&stream_start);
@@ -305,12 +169,12 @@ void BeepStruct::play_clip(const char* filepath)
 	uint8_t	*out_buffer = (uint8_t *)av_malloc(MAX_AUDIO_FRAME_SIZE * 2);
 	AVFrame *frame = av_frame_alloc();
 
-	BeepObject->audioMutex.lock();
+	audioMutex.lock();
 
 	//init SDL
 	if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER))
 	{
-		BeepObject->audioMutex.unlock();
+		audioMutex.unlock();
 
 		blog(LOG_WARNING, "SRBEEP: play_clip: SDL init failed");
 		return;
@@ -327,7 +191,7 @@ void BeepStruct::play_clip(const char* filepath)
 
 	if(SDL_OpenAudio(&wanted_spec, NULL) < 0)
 	{
-		BeepObject->audioMutex.unlock();
+		audioMutex.unlock();
 
 		blog(LOG_WARNING, "SRBEEP: play_clip: SDL_OpenAudio failed");
 		return;
@@ -352,7 +216,7 @@ void BeepStruct::play_clip(const char* filepath)
 			ret = avcodec_decode_audio4(cdx, frame, &got_picture, packet);
 			if(ret < 0)
 			{
-				BeepObject->audioMutex.unlock();
+				audioMutex.unlock();
 
 				blog(LOG_WARNING, "SRBEEP: play_clip: Decoding audio frame error");
 				return;
@@ -389,29 +253,11 @@ void BeepStruct::play_clip(const char* filepath)
 	av_frame_free(&frame);
 	avformat_close_input(&stream_start);
 	
-	BeepObject->audioMutex.unlock();
-
+	audioMutex.unlock();
 	return;
 }
 
-void BeepStruct::fill_audio(void *udata, Uint8 *stream, int len)
-{
-	/*****************************************************************
-	From simplest_ffmpeg_audio_player by leixiaohua1020
-	Download at https://sourceforge.net/projects/simplestffmpegplayer/
-	*****************************************************************/
-	//SDL 2.0
-	SDL_memset(stream, 0, len);
-	if(audio_len == 0)		/*  Only  play  if  we  have  data  left  */
-		return;
-	len = ( (unsigned int)len > audio_len?audio_len:len);	/*  Mix  as  much  data  as  possible  */
-
-	SDL_MixAudio(stream, audio_pos, len, SDL_MIX_MAXVOLUME);
-	audio_pos += len;
-	audio_len -= len;
-}
-
-std::string BeepStruct::clean_path(std::string audio_path)
+std::string clean_path(std::string audio_path)
 {
 	std::string cleaned_path;
 	//If relative path then the first 2 chars should be ".."
@@ -424,32 +270,120 @@ std::string BeepStruct::clean_path(std::string audio_path)
 	else
 	{
 		#ifdef _WIN32
-				while(islower(audio_path[0]) && audio_path.length() > 0)
-				{
-					audio_path = audio_path.substr(1);
-				}
+			while(islower(audio_path[0]) && audio_path.length() > 0)
+			{
+				audio_path = audio_path.substr(1);
+			}
 		#else
-				while(audio_path.substr(0, 1) != "/" && audio_path.length() > 0)
-				{
-					audio_path = audio_path.substr(1);
-				}
+			while(audio_path.substr(0, 1) != "/" && audio_path.length() > 0)
+			{
+				audio_path = audio_path.substr(1);
+			}
 		#endif
 		cleaned_path = audio_path;
 	}
 	return cleaned_path;
 }
 
-void BeepStruct::Start(void)
+void start_stream_sound(void)
 {
-	closed = false;
-	BeepObject->SRBeepThread = std::thread([]() { BeepObject->main_loop(); });
+	const char* obs_data_path = obs_get_module_data_path(obs_current_module());
+	std::stringstream audio_path;
+	std::string true_path;
+
+	audio_path << obs_data_path;
+	audio_path << "/stream_start_sound.mp3";
+	true_path = clean_path(audio_path.str());
+	play_clip(true_path.c_str());
+	audio_path.str("");
+
+	return;
 }
 
-void BeepStruct::Stop(void)
+void stop_stream_sound(void)
 {
-	closed = true;
-	if(SRBeepThread.joinable())
+	const char* obs_data_path = obs_get_module_data_path(obs_current_module());
+	std::stringstream audio_path;
+	std::string true_path;
+
+	audio_path << obs_data_path;
+	audio_path << "/stream_stop_sound.mp3";
+	true_path = clean_path(audio_path.str());
+	play_clip(true_path.c_str());
+	audio_path.str("");
+
+	return;
+}
+
+void start_record_sound(void)
+{
+	const char* obs_data_path = obs_get_module_data_path(obs_current_module());
+	std::stringstream audio_path;
+	std::string true_path;
+
+	audio_path << obs_data_path;
+	audio_path << "/record_start_sound.mp3";
+	true_path = clean_path(audio_path.str());
+	play_clip(true_path.c_str());
+	audio_path.str("");
+
+	return;
+}
+
+void stop_record_sound(void)
+{
+	const char* obs_data_path = obs_get_module_data_path(obs_current_module());
+	std::stringstream audio_path;
+	std::string true_path;
+
+	audio_path << obs_data_path;
+	audio_path << "/record_stop_sound.mp3";
+	true_path = clean_path(audio_path.str());
+	play_clip(true_path.c_str());
+	audio_path.str("");
+
+	return;
+}
+
+void obsstudio_srbeep_frontend_event_callback(enum obs_frontend_event event, void *private_data)
+{
+	if (event == OBS_FRONTEND_EVENT_STREAMING_STARTED)
 	{
-		SRBeepThread.join();
+		if(st_stt_Thread.joinable())
+		{
+			st_stt_Thread.join();
+		}
+		st_stt_Thread = std::thread(start_stream_sound);
 	}
+	else if (event == OBS_FRONTEND_EVENT_RECORDING_STARTED)
+	{
+		if(rc_stt_Thread.joinable())
+		{
+			rc_stt_Thread.join();
+		}
+		rc_stt_Thread = std::thread(start_record_sound);
+	}
+	else if (event == OBS_FRONTEND_EVENT_STREAMING_STOPPED)
+	{
+		if(st_sto_Thread.joinable())
+		{
+			st_sto_Thread.join();
+		}
+		st_sto_Thread = std::thread(stop_stream_sound);
+	}
+	else if (event == OBS_FRONTEND_EVENT_RECORDING_STOPPED)
+	{
+		if(rc_sto_Thread.joinable())
+		{
+			rc_sto_Thread.join();
+		}
+		rc_sto_Thread = std::thread(stop_record_sound);
+	}
+}
+
+bool obs_module_load(void)
+{
+	av_register_all();
+	obs_frontend_add_event_callback(obsstudio_srbeep_frontend_event_callback, 0);
+	return true;
 }

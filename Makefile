@@ -1,6 +1,9 @@
 ifndef OBS_INCLUDE
 OBS_INCLUDE = /usr/include/obs
 endif
+ifndef OBS_API_INCLUDE
+OBS_API_INCLUDE = ./#'/media/will/Big Volume/OBS/obs-studio/UI'
+endif
 ifndef OBS_LIB
 OBS_LIB = /usr/lib
 endif
@@ -22,7 +25,7 @@ RM = rm -f
 CXX = g++
 CXXFLAGS = -g -Wall -std=c++11 -fPIC
 
-INCLUDE = -I$(OBS_INCLUDE) -I$(FFmpegPath) -I$(SDL_INCLUDE)
+INCLUDE = -I$(OBS_INCLUDE) -I$(OBS_API_INCLUDE) -I$(FFmpegPath) -I$(SDL_INCLUDE)
 LDFLAGS = -L$(OBS_LIB) -L$(FFmpegLib) -L$(SDL_LIB)
 LDLIBS_LIB   = -lobs -lavcodec -lavformat -lswresample -lavutil -lSDL2 #libs for ffmpeg and SDL
 
