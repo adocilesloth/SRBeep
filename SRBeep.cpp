@@ -19,7 +19,7 @@ extern "C"
 };
 
 std::mutex audioMutex;
-std::thread st_stt_Thread, st_sto_Thread, rc_stt_Thread, rc_sto_Thread;
+std::thread st_stt_Thread, st_sto_Thread, rc_stt_Thread, rc_sto_Thread, bf_stt_Thread, bf_sto_Thread, ps_stt_Thread, ps_sto_Thread;
 
 #define	MAX_AUDIO_FRAME_SIZE 192000 // 1 second of 48khz 32bit audio
 static  Uint8  *audio_chunk;
@@ -62,6 +62,22 @@ void obs_module_unload(void)
 	{
 		rc_sto_Thread.join();
 	}
+	if(bf_stt_Thread.joinable())
+	{
+		bf_stt_Thread.join();
+	}
+	if(bf_sto_Thread.joinable())
+	{
+		bf_sto_Thread.join();
+	}
+	if(ps_stt_Thread.joinable())
+	{
+		ps_stt_Thread.join();
+	}
+	if(ps_sto_Thread.joinable())
+	{
+		ps_sto_Thread.join();
+	}
 	return;
 }
 
@@ -77,7 +93,7 @@ const char *obs_module_name(void)
 
 const char *obs_module_description(void)
 {
-	return "Adds audio sound when streaming/recording starts/stops.";
+	return "Adds audio sound when streaming/recording/buffer starts/stops or when recording is paused/unpaused.";
 }
 
 void fill_audio(void *udata, Uint8 *stream, int len)
@@ -285,59 +301,14 @@ std::string clean_path(std::string audio_path)
 	return cleaned_path;
 }
 
-void start_stream_sound(void)
+void play_sound(std::string file_name)
 {
 	const char* obs_data_path = obs_get_module_data_path(obs_current_module());
 	std::stringstream audio_path;
 	std::string true_path;
 
 	audio_path << obs_data_path;
-	audio_path << "/stream_start_sound.mp3";
-	true_path = clean_path(audio_path.str());
-	play_clip(true_path.c_str());
-	audio_path.str("");
-
-	return;
-}
-
-void stop_stream_sound(void)
-{
-	const char* obs_data_path = obs_get_module_data_path(obs_current_module());
-	std::stringstream audio_path;
-	std::string true_path;
-
-	audio_path << obs_data_path;
-	audio_path << "/stream_stop_sound.mp3";
-	true_path = clean_path(audio_path.str());
-	play_clip(true_path.c_str());
-	audio_path.str("");
-
-	return;
-}
-
-void start_record_sound(void)
-{
-	const char* obs_data_path = obs_get_module_data_path(obs_current_module());
-	std::stringstream audio_path;
-	std::string true_path;
-
-	audio_path << obs_data_path;
-	audio_path << "/record_start_sound.mp3";
-	true_path = clean_path(audio_path.str());
-	play_clip(true_path.c_str());
-	audio_path.str("");
-
-	return;
-}
-
-void stop_record_sound(void)
-{
-	const char* obs_data_path = obs_get_module_data_path(obs_current_module());
-	std::stringstream audio_path;
-	std::string true_path;
-
-	audio_path << obs_data_path;
-	audio_path << "/record_stop_sound.mp3";
+	audio_path << file_name;
 	true_path = clean_path(audio_path.str());
 	play_clip(true_path.c_str());
 	audio_path.str("");
@@ -347,13 +318,13 @@ void stop_record_sound(void)
 
 void obsstudio_srbeep_frontend_event_callback(enum obs_frontend_event event, void *private_data)
 {
-	if (event == OBS_FRONTEND_EVENT_STREAMING_STARTED)
+	if(event == OBS_FRONTEND_EVENT_STREAMING_STARTED)
 	{
 		if(st_stt_Thread.joinable())
 		{
 			st_stt_Thread.join();
 		}
-		st_stt_Thread = std::thread(start_stream_sound);
+		st_stt_Thread = std::thread(play_sound, "/stream_start_sound.mp3");
 	}
 	else if (event == OBS_FRONTEND_EVENT_RECORDING_STARTED)
 	{
@@ -361,7 +332,23 @@ void obsstudio_srbeep_frontend_event_callback(enum obs_frontend_event event, voi
 		{
 			rc_stt_Thread.join();
 		}
-		rc_stt_Thread = std::thread(start_record_sound);
+		rc_stt_Thread = std::thread(play_sound, "/record_start_sound.mp3");
+	}
+	else if(event == OBS_FRONTEND_EVENT_REPLAY_BUFFER_STARTED)
+	{
+		if(bf_stt_Thread.joinable())
+		{
+			bf_stt_Thread.join();
+		}
+		bf_stt_Thread = std::thread(play_sound, "/buffer_start_sound.mp3");
+	}
+	else if(event == OBS_FRONTEND_EVENT_RECORDING_PAUSED)
+	{
+		if(ps_stt_Thread.joinable())
+		{
+			ps_stt_Thread.join();
+		}
+		ps_stt_Thread = std::thread(play_sound, "/pause_start_sound.mp3");
 	}
 	else if (event == OBS_FRONTEND_EVENT_STREAMING_STOPPED)
 	{
@@ -369,7 +356,7 @@ void obsstudio_srbeep_frontend_event_callback(enum obs_frontend_event event, voi
 		{
 			st_sto_Thread.join();
 		}
-		st_sto_Thread = std::thread(stop_stream_sound);
+		st_sto_Thread = std::thread(play_sound, "/stream_stop_sound.mp3");
 	}
 	else if (event == OBS_FRONTEND_EVENT_RECORDING_STOPPED)
 	{
@@ -377,7 +364,23 @@ void obsstudio_srbeep_frontend_event_callback(enum obs_frontend_event event, voi
 		{
 			rc_sto_Thread.join();
 		}
-		rc_sto_Thread = std::thread(stop_record_sound);
+		rc_sto_Thread = std::thread(play_sound, "/record_stop_sound.mp3");
+	}
+	else if(event == OBS_FRONTEND_EVENT_REPLAY_BUFFER_STOPPED)
+	{
+		if(bf_sto_Thread.joinable())
+		{
+			bf_sto_Thread.join();
+		}
+		bf_sto_Thread = std::thread(play_sound, "/buffer_stop_sound.mp3");
+	}
+	else if(event == OBS_FRONTEND_EVENT_RECORDING_UNPAUSED)
+	{
+		if(ps_stt_Thread.joinable())
+		{
+			ps_stt_Thread.join();
+		}
+		ps_stt_Thread = std::thread(play_sound, "/pause_stop_sound.mp3");
 	}
 }
 

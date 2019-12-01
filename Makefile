@@ -2,22 +2,22 @@ ifndef OBS_INCLUDE
 OBS_INCLUDE = /usr/include/obs
 endif
 ifndef OBS_API_INCLUDE
-OBS_API_INCLUDE = ./#'/media/will/Big Volume/OBS/obs-studio/UI'
+OBS_API_INCLUDE = ./
 endif
 ifndef OBS_LIB
 OBS_LIB = /usr/lib
 endif
 ifndef FFmpegPath
-FFmpegPath = /home/will/ffmpeg_build/include
+FFmpegPath = $(HOME)/ffmpeg_sources/ffmpeg
 endif
 ifndef FFmpegLib
-FFmpegLib = $(FFmpegPath)/../lib
+FFmpegLib = $(HOME)/ffmpeg_build/lib
 endif
 ifndef SDL_INCLUDE
-SDL_INCLUDE = /usr/include/SDL2
+SDL_INCLUDE = $(HOME)/SDL2-2.0.10/include
 endif
 ifndef SDL_LIB
-SDL_LIB = /usr/lib/x86_64-linux-gnu
+SDL_LIB = $(HOME)/SDL2-2.0.10/build
 endif
 
 RM = rm -f
@@ -55,13 +55,13 @@ clean:
 	$(RM) $(LIB_OBJ) $(LIB)
 	sudo rm -r /usr/lib/obs-plugins/$(LIB)
 	sudo rm -r /usr/share/obs/obs-plugins/SRBeep
-	sudo rm /usr/lib/libavcodec.so.57
-	sudo rm /usr/lib/libavformat.so.57
-	sudo rm /usr/lib/libswresample.so.2
-	sudo rm /usr/lib/libavutil.so.55
-	sudo rm /usr/lib/libx264.so.148
-	sudo rm /usr/lib/libvpx.so.3
-	sudo rm /usr/lib/libfdk-aac.so.1
+	sudo rm /usr/lib/libavcodec.so.58
+	sudo rm /usr/lib/libavformat.so.58
+	sudo rm /usr/lib/libswresample.so.3
+	sudo rm /usr/lib/libavutil.so.56
+	#sudo rm /usr/lib/libx264.so.148
+	#sudo rm /usr/lib/libvpx.so.3
+	#sudo rm /usr/lib/libfdk-aac.so.1
 	sudo rm /usr/lib/libSDL2.so
 
 #Install for selfbuilt obs-studio

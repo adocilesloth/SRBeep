@@ -3,7 +3,8 @@ A Docile Sloth adocilesloth@gmail.com
 ************************************/
 
 Plugin to play a sound when starting/stopping
-streaming/recording.
+streaming/recording/buffer or pausing/unpausing
+recording.
 
 ===WINDOWS===
 Windows is built and working for both 32bit and 64bit
@@ -14,20 +15,23 @@ Drag and drop obs-studio folder into C:\Program Files
 Merge all files down and you should be good to go.
 
 ===LINUX===
-I provide binaries for Ubuntu 14.04 LTS 64bit for the PPA
+Dependancies:
+obs (duh)
+ffmpeg (you should have this if you have a working obs)
+SDL2 (Simple Directmedia Layer, see https://www.libsdl.org/download-2.0.php)
+
+I provide binaries for Ubuntu 18.04.3 LTS 64bit for the PPA
 version of OBS
 Just run
 	>make install
-and it should install for you in the right places.
+and it should install for you in the right places. If it
+doesn't, you may have to check the paths to FFmpeg, SDL2 and
+OBS and fix as necessary.
 
 =For others=, compile and install with
 	>make
 	>make install
 		#NOTE# make install may not work. See below.
-Dependancies:
-obs (duh)
-ffmpeg (you should have this if you have a working obs)
-SDL2 (Simple Directmedia Layer, see https://www.libsdl.org/download-2.0.php)
 
 I've provided a best guess for make install. If your files
 are set up how I think they will be, put SRBeep-bin into
