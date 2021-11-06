@@ -19,7 +19,7 @@ extern "C"
 };
 
 std::mutex audioMutex;
-std::thread st_stt_Thread, st_sto_Thread, rc_stt_Thread, rc_sto_Thread, bf_stt_Thread, bf_sto_Thread, ps_stt_Thread, ps_sto_Thread;
+std::thread st_stt_Thread, st_sto_Thread, rc_stt_Thread, rc_sto_Thread, bf_stt_Thread, bf_sto_Thread, bf_sav_Thread, ps_stt_Thread, ps_sto_Thread;
 
 #define	MAX_AUDIO_FRAME_SIZE 192000 // 1 second of 48khz 32bit audio
 static  Uint8 *audio_chunk;
@@ -69,6 +69,10 @@ void obs_module_unload(void)
 	if(bf_sto_Thread.joinable())
 	{
 		bf_sto_Thread.join();
+	}
+	if(bf_sav_Thread.joinable())
+	{
+		bf_sav_Thread.join();
 	}
 	if(ps_stt_Thread.joinable())
 	{
@@ -379,6 +383,14 @@ void obsstudio_srbeep_frontend_event_callback(enum obs_frontend_event event, voi
 			bf_sto_Thread.join();
 		}
 		bf_sto_Thread = std::thread(play_sound, "/buffer_stop_sound.mp3");
+	}
+	else if (event == OBS_FRONTEND_EVENT_REPLAY_BUFFER_SAVED)
+	{
+		if (bf_sav_Thread.joinable())
+		{
+			bf_sav_Thread.join();
+		}
+		bf_sav_Thread = std::thread(play_sound, "/buffer_save_sound.mp3");
 	}
 	else if(event == OBS_FRONTEND_EVENT_RECORDING_UNPAUSED)
 	{
