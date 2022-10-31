@@ -6,48 +6,49 @@ Plugin to play a sound when starting/stopping
 streaming/recording/buffer or pausing/unpausing
 recording.
 
-===WINDOWS===
-Windows is built and working for both 32bit and 64bit
+**===WINDOWS===**
+Windows is built and working for 64bit
 Has all required .dlls
 
 Drag and drop obs-studio folder into C:\Program Files
 (or wher ever you have obs-studio installed)
 Merge all files down and you should be good to go.
 
-===LINUX===
+**===LINUX===**
 Dependancies:
-obs (duh)
-ffmpeg (you should have this if you have a working obs)
-SDL2 (Simple Directmedia Layer, see https://www.libsdl.org/download-2.0.php)
+OBS (duh)
+FFmpeg (you should have this if you have a working obs)
+SDL2 (Simple Directmedia Layer, see https://github.com/libsdl-org/SDL/releases/tag/release-2.24.1)
 
-I provide binaries for Ubuntu 18.04.3 LTS 64bit for the PPA
-version of OBS
-Just run
-	>make install
-and it should install for you in the right places. If it
-doesn't, you may have to check the paths to FFmpeg, SDL2 and
-OBS and fix as necessary.
+Clone the git repo:  
+	`git clone https://github.com/adocilesloth/SRBeep.git`  
+	
+cd to where you downloaded the source  
 
-=For others=, compile and install with
-	>make
-	>make install
-		#NOTE# make install may not work. See below.
+Check the environment PATHS in Makefile  
+	Make sure they match your OBS and FFmpeg and SDL2 installations and fix if necessary.  
+	(`OBS_API_INCLUDE` will not need updating as the files are in the git repo)  
+  
+Then run:  
+```
+make  
+make install  
+make clean (optional: if you want to remove the temporary .o and .so files)
+```
 
-I've provided a best guess for make install. If your files
-are set up how I think they will be, put SRBeep-bin into
-the obs-studio folder, uncomment the bottom secion and
-comment out the install: and clean: bits that aren't
-commented.
+Ubuntu 22.04 is built and working for 64bit:
+Drag and drop obs-studio folder into ~/.config  
+Merge all files down and you should be good to go.
 
 You'll probably have to move the .so.## for ffmpeg into
-/usr/lib/
+/usr/lib/ from the release ./depends folder
 but obs-studio should throw a warning for each .so.## (one at a
 time) when it tries to load the module to tell you what they are.
 They should be in the ffmpeg/lib folder (where ever that may be
 for you)
 
-===MAC===
-Uh, sould work. Probably. Don't have a MAC to test with.
-So...
-You can try the "For others" bit of LINUX
-Let me know if you get it to work!
+**===MAC===**
+Uh, sould work. Probably. Don't have a MAC to test with.  
+So...  
+You can try the LINUX instructions.  
+Let me know if you get it to work! 
