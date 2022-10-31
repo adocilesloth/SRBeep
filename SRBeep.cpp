@@ -171,9 +171,7 @@ void play_clip(const char *filepath)
 	avcodec_open2(cdx, codec, NULL);
 
 	//audio packet
-	AVPacket *packet;
-	packet = (AVPacket*)av_malloc(sizeof(AVPacket));
-	av_init_packet(packet);
+	AVPacket* packet = av_packet_alloc();
 
 	//Audio Parameters
 	uint64_t out_channel_layout = AV_CH_LAYOUT_STEREO;
